@@ -10,7 +10,10 @@ import time
 import pandas as pd
 
 
-bookscouter_dat = pd.read_csv('~/Documents/bookscouter/bookscouter_dat.csv')
+# This is the same filename that gets output at the end. We're using it here in case someone wants to run the scraper
+# again and keep the same file structure. Even if this is one's first time running the scraper, he should make sure
+# that the CSV has at least one column titled ISBN containing the ISBNs to scrape.
+bookscouter_dat = pd.read_csv('bookscouter_dat.csv')
 bookscouter_isbns = set(bookscouter_dat.ISBN)
 
 url = 'https://bookscouter.com/sell/%s'
@@ -42,7 +45,7 @@ def clean_each_bookstore_list(isbn, my_list):
 	return new_list
 
 
-def put_bookstore_results_in_list(results):
+def put_bookstore_results_in_list(results, sublist_size):
 	results_list = results.text.split('\n')[1:]
 	results_list2 = [item for item in results_list if item not in ['SELL', 'SHOW MORE VENDORS']]
 	composite_list = [results_list2[x:x+sublist_size] for x in range(0, len(results_list2),sublist_size)]
@@ -72,7 +75,7 @@ def get_isbn_data(isbn):
 	response = driver.get(url % isbn)
 	book_title, results, img_loc = get_data_from_page()
 	titles_df = pd.DataFrame({'ISBN': isbn, 'TITLE': book_title.text, 'IMG': img_loc}, index=[0])
-	composite_list = put_bookstore_results_in_list(results)
+	composite_list = put_bookstore_results_in_list(results, sublist_size)
 	results_df = pd.DataFrame([clean_each_bookstore_list(isbn, subset) for subset in composite_list], columns = ['ISBN', 'STORE', 'PRICE'])
 	return titles_df, results_df
 
@@ -80,9 +83,6 @@ def get_isbn_data(isbn):
 metadata_df = pd.DataFrame(columns=['ISBN', 'TITLE', 'IMG'])
 results_df = pd.DataFrame(columns=['ISBN', 'STORE', 'PRICE'])
 
-
-bookscouter_isbns = bookscouter_isbns.difference({'9781558615052'})
-# I don't want to sell 9781558615052
 
 # In case the scraping breaks and we need to start over, but want to keep where we left off.
 books_finished = set()
@@ -99,7 +99,11 @@ for isbn in bookscouter_isbns.difference(books_finished):
 	print("Completed results for book: %s (Title: %s)" % (isbn, metadata_temp.TITLE.iloc[0]))
 	metadata_df = pd.concat([metadata_df, metadata_temp])
 	results_df = pd.concat([results_df, results_temp])
-	#results_df = results_df[results_df.PRICE > 0]
+	results_df = results_df[results_df.PRICE > 0]
 
 
 books_finished = set(metadata_df.ISBN)
+
+
+merged_results = results_df.merge(metadata_df)
+merged_results.to_csv('bookscouter_results.csv', index=False)
