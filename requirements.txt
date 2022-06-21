@@ -3,7 +3,7 @@ bs4==0.0.1
 certifi==2018.1.18
 chardet==3.0.4
 idna==2.6
-numpy==1.14.0
+numpy==1.22.0
 pandas==0.22.0
 PuLP==1.6.8
 pyparsing==2.2.0
